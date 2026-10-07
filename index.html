@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="タイムカード">
+<meta name="theme-color" content="#7A2E63">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>ラヴィング タイムカード</title>
+<style>
+:root{
+  --bg:#F3EFF6; --surface:#FFFFFF; --sunk:#E9E2EF; --ink:#2A1F33; --muted:#6E6078;
+  --line:#DCD2E4; --accent:#7A2E63; --accent-ink:#FFFFFF;
+  --work:#1F7A6B; --work-bg:#DDF1EC; --brk:#A56A12; --brk-bg:#F8EBD4; --off:#8A7F92; --danger:#B3261E;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1B1520; --surface:#261E2D; --sunk:#30273A; --ink:#F2EAF5; --muted:#AB9DB5;
+    --line:#3E3348; --accent:#E48AC4; --accent-ink:#1B1520;
+    --work:#5FD0B8; --work-bg:#16372F; --brk:#F0B45C; --brk-bg:#3D2E15; --off:#8E8397; --danger:#FF8A80;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1B1520; --surface:#261E2D; --sunk:#30273A; --ink:#F2EAF5; --muted:#AB9DB5;
+  --line:#3E3348; --accent:#E48AC4; --accent-ink:#1B1520;
+  --work:#5FD0B8; --work-bg:#16372F; --brk:#F0B45C; --brk-bg:#3D2E15; --off:#8E8397; --danger:#FF8A80;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Meiryo","メイリオ","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;font-weight:400;line-height:1.6;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 96px}
+
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:8px 2px 18px}
+.shop{font-size:.95rem;color:var(--muted)}
+.shop b{color:var(--accent);font-weight:700;letter-spacing:.04em}
+.clock{font-weight:700;font-size:clamp(3rem,15vw,5.2rem);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.clock small{font-size:.38em;color:var(--muted);margin-left:.15em;font-weight:700}
+.date{font-size:1rem;color:var(--muted);margin-top:6px}
+.biz{font-size:.8rem;color:var(--muted);text-align:right}
+.biz strong{display:block;color:var(--ink);font-size:1rem}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);z-index:20}
+nav.tabs button{flex:1;max-width:190px;background:none;border:0;padding:12px 0 10px;font-weight:700;color:var(--muted);font-size:.95rem;border-top:3px solid transparent}
+nav.tabs button[aria-selected="true"]{color:var(--accent);border-top-color:var(--accent)}
+
+h2{font-size:1.1rem;font-weight:700;margin:28px 0 10px}
+.hint{color:var(--muted);font-size:.88rem;margin:0 0 12px}
+
+.staffgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.st{position:relative;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:18px;padding:14px 14px 12px;min-height:92px;display:flex;flex-direction:column;justify-content:space-between}
+.st .nm{font-size:1.2rem;font-weight:700;line-height:1.3;word-break:break-all}
+.st .ss{font-size:.85rem;display:flex;align-items:center;gap:6px;color:var(--off)}
+.st .ss::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
+.st.work{border-color:var(--work);background:var(--work-bg)}
+.st.work .ss{color:var(--work)}
+.st.brk{border-color:var(--brk);background:var(--brk-bg)}
+.st.brk .ss{color:var(--brk)}
+
+.log{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 14px;border-top:1px solid var(--line);align-items:center}
+.row:first-child{border-top:0}
+.row .who{font-weight:700}
+.row .tm{color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums}
+.row .hrs{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.row .sub{font-size:.8rem;color:var(--muted);text-align:right}
+button.row{width:100%;background:none;border:0;border-top:1px solid var(--line);text-align:left}
+button.row:first-child{border-top:0}
+button.row[data-edit]{grid-template-columns:1fr auto 14px}
+button.row[data-edit]::after{content:"›";color:var(--muted);font-size:1.3rem;line-height:1}
+button.row[data-edit]:active{background:var(--sunk)}
+.empty{padding:22px 16px;color:var(--muted);text-align:center}
+.pill{display:inline-block;font-size:.72rem;padding:1px 8px;border-radius:99px;background:var(--work-bg);color:var(--work);margin-left:6px;vertical-align:2px}
+.pill.brk{background:var(--brk-bg);color:var(--brk)}
+.daylab{padding:8px 14px;background:var(--sunk);font-size:.82rem;color:var(--muted);font-weight:700}
+
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.month{display:flex;align-items:center;gap:4px;font-weight:700;font-size:1.15rem}
+.iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:1.1rem}
+select,input[type=text],input[type=number],input[type=datetime-local]{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;min-height:42px;max-width:100%}
+.btn{border:0;border-radius:12px;padding:10px 16px;min-height:42px;font-weight:700;background:var(--sunk)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.danger{background:none;color:var(--danger);border:1px solid currentColor}
+.spacer{flex:1}
+
+.sumwrap{overflow-x:auto;margin-bottom:18px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:420px;font-variant-numeric:tabular-nums}
+th,td{padding:10px 12px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+th{font-size:.8rem;color:var(--muted);font-weight:700;border-top:0}
+th:first-child,td:first-child{text-align:left}
+tfoot td{font-weight:700}
+
+.stafflist .row{grid-template-columns:1fr auto}
+.addform{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.addform input[type=text]{flex:1 1 160px}
+.addform input[type=number]{flex:1 1 130px;min-width:0}
+
+dialog{border:0;border-radius:22px;padding:0;background:var(--surface);color:var(--ink);width:min(440px,calc(100% - 24px));max-height:calc(100% - 40px)}
+dialog::backdrop{background:rgba(20,10,25,.5)}
+.dlg{padding:22px 20px 18px}
+.dlg h3{margin:0 0 4px;font-size:1.5rem;font-weight:700}
+.dlg .now{color:var(--muted);margin:0 0 18px;font-variant-numeric:tabular-nums}
+.acts{display:grid;gap:10px}
+.act{border:0;border-radius:16px;padding:18px;font-size:1.25rem;font-weight:700;background:var(--sunk);color:var(--ink)}
+.act.in{background:var(--work);color:#fff}
+.act.out{background:var(--accent);color:var(--accent-ink)}
+.act.brk{background:var(--brk-bg);color:var(--brk);border:2px solid var(--brk)}
+.field{display:grid;gap:4px;margin-bottom:12px}
+.field label{font-size:.85rem;color:var(--muted);font-weight:700}
+.field input,.field select{width:100%}
+.dlgfoot{display:flex;gap:8px;margin-top:16px}
+.check{display:flex;gap:8px;align-items:center}
+
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;max-width:90%;text-align:center}
+.toast.show{opacity:1}
+.errbox{background:var(--brk-bg);color:var(--ink);border:1px solid var(--brk);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:.85rem;word-break:break-all}
+dialog.fb{position:fixed;inset:0;margin:auto;height:fit-content;z-index:40;box-shadow:0 0 0 100vmax rgba(20,10,25,.5)}
+.dlgmsg{color:var(--danger);font-weight:700;font-size:.9rem;margin:4px 0 0;min-height:1.2em}
+.slip{background:#fff;color:#222;border:1px solid var(--line);border-radius:14px;padding:20px 18px;font-variant-numeric:tabular-nums}
+.slip h3{margin:0;font-size:1.35rem;font-weight:700;letter-spacing:.2em;text-align:center}
+.slip .sm{text-align:center;color:#666;font-size:.85rem;margin:2px 0 14px}
+.slip .to{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #222;padding-bottom:6px;margin-bottom:14px;gap:8px}
+.slip .to b{font-size:1.25rem}
+.slip .grp{margin-bottom:14px}
+.slip .gt{font-size:.78rem;font-weight:700;color:#fff;background:#7A2E63;padding:3px 10px;border-radius:6px 6px 0 0;display:inline-block}
+.slip .gl{border:1px solid #ccc;border-radius:0 8px 8px 8px}
+.slip .li{display:flex;justify-content:space-between;padding:7px 12px;border-top:1px solid #e5e5e5;gap:8px}
+.slip .li:first-child{border-top:0}
+.slip .li.tot{font-weight:700;background:#f5f0f7}
+.slip .net{display:flex;justify-content:space-between;align-items:center;border:2px solid #7A2E63;border-radius:10px;padding:12px 14px;margin:6px 0 16px;font-weight:700}
+.slip .net span:last-child{font-size:1.5rem;color:#7A2E63}
+.slip table{min-width:0;font-size:.8rem}
+.slip th,.slip td{padding:5px 6px;border-top:1px solid #e5e5e5}
+.slip th{color:#666}
+.slip .foot{font-size:.72rem;color:#777;margin-top:10px}
+.backbtn{background:none;border:0;color:var(--accent);font-weight:700;padding:8px 0;margin-top:4px}
+.warn{background:var(--brk-bg);color:var(--ink);border-radius:10px;padding:8px 12px;font-size:.85rem;margin-bottom:10px}
+.cfg{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cfg div{flex:1 1 180px;font-size:.92rem}
+.radios{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media print{
+  nav.tabs,header.top,#modeNote,#err,.noprint,.toast{display:none!important}
+  body{background:#fff}
+  .wrap{padding:0;max-width:none}
+  .slip{border:0;padding:0}
+}
+.note{font-size:.8rem;color:var(--muted);margin-top:24px}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="shop"><b>ラヴィング</b> タイムカード</div>
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date"></div>
+    </div>
+    <div class="biz"><span>営業日</span><strong id="bizday"></strong></div>
+  </header>
+
+  <div id="err" class="errbox" hidden></div>
+  <main id="view"></main>
+  <p class="note" id="modeNote"></p>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="punch" aria-selected="true">打刻</button>
+  <button role="tab" data-tab="records" aria-selected="false">記録</button>
+  <button role="tab" data-tab="pay" aria-selected="false">給与</button>
+  <button role="tab" data-tab="staff" aria-selected="false">スタッフ</button>
+</nav>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- 設定 ---------- */
+const CUTOFF_HOUR = 6;            // この時刻より前の出勤は前日の営業日として扱う
+const LS_KEY = "loving-timecard-v1";
+const STANDALONE = !window.claude;   // claude.ai の外（普通のブラウザ）で開いたとき
+
+/* ---------- 状態 ---------- */
+
+/* ---------- ユーティリティ ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const WD = ["日","月","火","水","木","金","土"];
+function ymd(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function ymKey(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1); }
+function bizDate(ms){ return ymd(new Date(ms - CUTOFF_HOUR*3600000)); }
+function hm(ms){ const d=new Date(ms); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+function dur(ms){ ms=Math.max(0,ms); const m=Math.floor(ms/60000); return Math.floor(m/60)+":"+pad(m%60); }
+function yen(n){ return "¥"+Math.round(n).toLocaleString("ja-JP"); }
+function dayLabel(dateStr){ const [y,m,d]=dateStr.split("-").map(Number); const w=new Date(y,m-1,d).getDay(); return m+"月"+d+"日（"+WD[w]+"）"; }
+function toInput(ms){ if(ms==null) return ""; const d=new Date(ms); return ymd(d)+"T"+hm(ms); }
+function fromInput(v){ if(!v) return null; const t=new Date(v).getTime(); return isNaN(t)?null:t; }
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2)).replace(/-/g,""); }
+function breakMs(p, now){
+  if (p.breakMin!=null) return p.breakMin*60000;
+  return (p.breaks||[]).reduce((a,b)=>a+Math.max(0,(b.e ?? p.out ?? now) - b.s),0);
+}
+function workMs(p, now){ return Math.max(0,(p.out ?? now) - p.in - breakMs(p, now)); }
+function onBreak(p){ const b=(p.breaks||[]); return p.open && b.length && b[b.length-1].e==null; }
+function findRec(id){ return S.month.find(x=>x.id===id) || S.recent.find(x=>x.id===id) || null; }
+function staffName(id){ const s=S.staff.find(x=>x.id===id); return s ? s.name : "（削除済み）"; }
+function staffWage(id){ const s=S.staff.find(x=>x.id===id); return s && s.wage ? Number(s.wage) : 0; }
+function showErr(msg){ const b=$("#err"); if(!b) return; b.hidden=false; b.textContent="エラー: "+msg; }
+window.addEventListener("error",e=>showErr((e.message||"")+" ("+(e.lineno||"")+")"));
+window.addEventListener("unhandledrejection",e=>showErr((e.reason&&(e.reason.code||e.reason.message))||String(e.reason)));
+function subErr(where){ return e=>{ showErr(where+"の読み込みに失敗 ["+(e&&e.code)+"] "+(e&&e.message||"")); }; }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2200); }
+
+/* ---------- 状態(2) ---------- */
+const S = { tab:"punch", staff:[], recent:[], month:[], monthKey:ymKey(new Date()), filter:"all", mode:"local", settings:{}, adjust:{}, slip:null, unlocked:false, lastAct:Date.now() };
+let db = null, downloads = null, unsubMonth = null;
+
+/* ---------- 給与計算 ---------- */
+const DEF_PAY = { nightStart:22, nightEnd:5 };
+function paySet(){ const c=Object.assign({},DEF_PAY,S.settings.pay||{}); ["nightStart","nightEnd"].forEach(k=>c[k]=Number(c[k])||0); return c; }
+function nightText(c){ return c.nightStart+":00〜"+c.nightEnd+":00"; }
+// s〜e のうち深夜時間帯に入っている長さ(ms)
+function nightMsIn(s,e,c){
+  if (e<=s || c.nightStart===c.nightEnd) return 0;
+  let tot=0; const d=new Date(s); d.setHours(0,0,0,0); d.setDate(d.getDate()-1);
+  for (; d.getTime()<e; d.setDate(d.getDate()+1)){
+    const ws=new Date(d); ws.setHours(c.nightStart,0,0,0);
+    const we=new Date(d); if (c.nightEnd<c.nightStart) we.setDate(we.getDate()+1); we.setHours(c.nightEnd,0,0,0);
+    tot+=Math.max(0,Math.min(e,we.getTime())-Math.max(s,ws.getTime()));
+  }
+  return tot;
+}
+// 1つの勤務記録を「実働」と「うち深夜」に分ける
+function splitWork(p, now, c){
+  const end=p.out ?? now, total=Math.max(0,end-p.in);
+  let night=nightMsIn(p.in,end,c);
+  if (p.breakMin!=null){
+    // 休憩の時刻がわからないときは、深夜以外の時間から先に差し引く
+    const brk=Math.min(total,p.breakMin*60000), normal=total-night;
+    night-=Math.max(0,brk-normal);
+  } else {
+    (p.breaks||[]).forEach(b=>{ night-=nightMsIn(Math.max(b.s,p.in),Math.min(b.e ?? end,end),c); });
+  }
+  const work=workMs(p,now);
+  return { work, night:Math.max(0,Math.min(night,work)) };
+}
+// その日に有効な 基本時給 と 深夜手当(円/時間)
+function rateAt(staffId, date){
+  const s=S.staff.find(x=>x.id===staffId); if(!s) return {wage:0, night:0};
+  const cur={wage:Number(s.wage)||0, night:Number(s.nightYen)||0};
+  const h=(s.wageHist||[]).slice().sort((a,b)=>a.from.localeCompare(b.from));
+  if (!h.length) return cur;
+  const pick=e=>({wage:Number(e.wage)||0, night:e.night!=null?Number(e.night)||0:cur.night});
+  let r=pick(h[0]); h.forEach(x=>{ if(x.from<=date) r=pick(x); });
+  return r;
+}
+function wageAt(staffId, date){ return rateAt(staffId,date).wage; }
+function nightPayFor(nightYen, nightMin){ return nightYen*nightMin/60; }
+function calcPay(staffId){
+  const c=paySet(), s=S.staff.find(x=>x.id===staffId)||{};
+  const all=S.month.filter(p=>p.staffId===staffId);
+  const rows=all.filter(p=>!p.open).sort((a,b)=>a.in-b.in);
+  let workMin=0, nightMin=0, base=0, night=0; const days=new Set(), detail=[], wages=new Set(), nights=new Set();
+  rows.forEach(p=>{
+    const sp=splitWork(p,0,c), wm=Math.floor(sp.work/60000), nm=Math.floor(sp.night/60000), r=rateAt(staffId,p.date);
+    base+=r.wage*wm/60; night+=nightPayFor(r.night,nm); workMin+=wm; nightMin+=nm; days.add(p.date); wages.add(r.wage); nights.add(r.night);
+    detail.push({p,wm,nm,w:r.wage});
+  });
+  const adj=S.adjust[staffId+"_"+S.monthKey]||{};
+  base=Math.round(base); night=Math.round(night);
+  const commute=(Number(s.commute)||0)*days.size;
+  const extra=Number(adj.extra)||0, tax=Number(adj.tax)||0, deduct=Number(adj.deduct)||0;
+  const gross=base+night+commute+extra, ded=tax+deduct;
+  return { staffId, name:staffName(staffId), days:days.size, workMin, nightMin, base, night, commute, extra, extraLabel:adj.extraLabel||"その他手当",
+    tax, deduct, deductLabel:adj.deductLabel||"その他控除", gross, ded, net:gross-ded, detail, wages:[...wages], nights:[...nights], openCount:all.length-rows.length, cfg:c };
+}
+function minText(m){ return Math.floor(m/60)+"時間"+pad(m%60)+"分"; }
+
+/* ---------- パスワード ---------- */
+const LOCK_IDLE_MS = 5*60*1000;   // 5分さわらなければ自動でロック
+const PROTECTED = ["pay","staff"];
+function lockSet(){ const l=S.settings.lock; return !!(l && l.hash); }
+function payHidden(){ return lockSet() && !S.unlocked; }
+async function hashPw(pw, salt){
+  const txt="loving|"+salt+"|"+pw;
+  try{
+    const buf=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(txt));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch(e){
+    let h1=0x811c9dc5, h2=0x01000193; for(const ch of txt){ const c=ch.codePointAt(0); h1=Math.imul(h1^c,16777619)>>>0; h2=Math.imul(h2^c,2246822519)>>>0; }
+    return "f"+h1.toString(16)+h2.toString(16);
+  }
+}
+function relock(){ if(!S.unlocked) return; S.unlocked=false; if(PROTECTED.includes(S.tab)){ S.tab="punch"; S.slip=null; closeDlg(); } render(); }
+
+/* ---------- 保存（共有DB / この端末） ---------- */
+function lsLoad(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {staff:{},punches:{}}; }catch(e){ return {staff:{},punches:{}}; } }
+function lsSave(o){ try{ localStorage.setItem(LS_KEY, JSON.stringify(o)); }catch(e){} }
+function lsRefresh(){
+  const o=lsLoad();
+  S.staff=Object.entries(o.staff).map(([id,v])=>({id,...v}));
+  S.settings=o.settings||{}; S.adjust=o.adjust||{};
+  const all=Object.entries(o.punches).map(([id,v])=>({id,...v}));
+  const since=bizDate(Date.now()-86400000);
+  S.recent=all.filter(p=>p.open || p.date>=since);
+  S.month=all.filter(p=>p.date && p.date.startsWith(S.monthKey));
+  render();
+}
+async function put(col, id, data){
+  if (db){
+    try { await db.collection(col).doc(id).set(data); }
+    catch(e){ toast(e && e.code==="invalid_argument" ? "保存する権限がありません" : "保存できませんでした。もう一度お試しください"); showErr("保存 ["+(e&&e.code)+"] "+(e&&e.message||"")); throw e; }
+  } else {
+    const o=lsLoad(); (o[col]=o[col]||{})[id]=data; lsSave(o); lsRefresh();
+  }
+}
+async function del(col, id){
+  if (db){
+    try { await db.collection(col).doc(id).delete(); }
+    catch(e){ toast("削除できませんでした"); throw e; }
+  } else {
+    const o=lsLoad(); if(o[col]) delete o[col][id]; lsSave(o); lsRefresh();
+  }
+}
+function strip(p){ const {id,...rest}=p; return JSON.parse(JSON.stringify(rest)); }
+
+function monthRange(key){
+  const [y,m]=key.split("-").map(Number);
+  return [key+"-01", ymKey(new Date(y,m,1))+"-01"];
+}
+function subscribeMonth(){
+  if (!db){ lsRefresh(); return; }
+  if (unsubMonth) unsubMonth();
+  const [a,b]=monthRange(S.monthKey);
+  unsubMonth = db.collection("punches").where("date",">=",a).where("date","<",b)
+    .onSnapshot(s=>{ S.month=s.docs.map(d=>({id:d.id,...d.data()})); render(); }, subErr("月の記録"));
+}
+async function initStore(){
+  const use = window.claude && window.claude.use;
+  if (use){
+    try { db = await window.claude.use("db"); } catch(e){ db=null; }
+    window.claude.use("downloads").then(d=>{ downloads=d; if(S.tab==="records") render(); }).catch(()=>{});
+  }
+  if (db){
+    S.mode="db";
+    db.collection("staff").onSnapshot(s=>{ S.staff=s.docs.map(d=>({id:d.id,...d.data()})); render(); }, subErr("スタッフ"));
+    const toMap=s=>{ const m={}; s.docs.forEach(d=>m[d.id]=d.data()); return m; };
+    db.collection("settings").onSnapshot(s=>{ S.settings=toMap(s); render(); }, subErr("給与の設定"));
+    db.collection("adjust").onSnapshot(s=>{ S.adjust=toMap(s); render(); }, subErr("手当・控除"));
+    let openList=[], recentList=[];
+    const merge=()=>{ const m=new Map(); recentList.concat(openList).forEach(p=>m.set(p.id,p)); S.recent=[...m.values()]; render(); };
+    db.collection("punches").where("open","==",true).onSnapshot(s=>{ openList=s.docs.map(d=>({id:d.id,...d.data()})); merge(); }, subErr("勤務中データ"));
+    db.collection("punches").where("date",">=",bizDate(Date.now()-86400000)).onSnapshot(s=>{ recentList=s.docs.map(d=>({id:d.id,...d.data()})); merge(); }, subErr("今日の記録"));
+    subscribeMonth();
+  } else {
+    S.mode="local"; lsRefresh();
+  }
+  render();
+}
+
+/* ---------- 時計 ---------- */
+function tick(){
+  const n=new Date();
+  $("#clock").innerHTML=pad(n.getHours())+":"+pad(n.getMinutes())+"<small>"+pad(n.getSeconds())+"</small>";
+  $("#date").textContent=(n.getMonth()+1)+"月"+n.getDate()+"日（"+WD[n.getDay()]+"）";
+  $("#bizday").textContent=dayLabel(bizDate(n.getTime()));
+}
+setInterval(()=>{ tick(); if(S.unlocked && Date.now()-S.lastAct>LOCK_IDLE_MS){ relock(); toast("しばらく操作がなかったのでロックしました"); } if(S.tab==="punch" && new Date().getSeconds()===0) render(); },1000);
+["click","keydown","touchstart"].forEach(ev=>document.addEventListener(ev,()=>{ S.lastAct=Date.now(); },{passive:true,capture:true}));
+
+/* ---------- 画面 ---------- */
+function openPunchOf(staffId){ return S.recent.find(p=>p.open && p.staffId===staffId); }
+
+function viewPunch(){
+  const active=S.staff.filter(s=>s.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));
+  const now=Date.now();
+  let h="<h2>名前をタップして打刻</h2>";
+  if (!active.length){
+    h+='<div class="log"><div class="empty">まだスタッフがいません。<br>「スタッフ」タブで登録してください。</div></div>';
+  } else {
+    h+='<div class="staffgrid">'+active.map(s=>{
+      const p=openPunchOf(s.id);
+      const cls=p ? (onBreak(p)?"brk":"work") : "";
+      const st=p ? (onBreak(p)?"休憩中":"勤務中 "+hm(p.in)+"〜") : "退勤";
+      return '<button class="st '+cls+'" data-punch="'+esc(s.id)+'"><span class="nm">'+esc(s.name)+'</span><span class="ss">'+st+'</span></button>';
+    }).join("")+"</div>";
+  }
+  const today=bizDate(now);
+  const list=S.recent.filter(p=>p.date===today || p.open).sort((a,b)=>b.in-a.in);
+  h+="<h2>今日の勤務</h2><p class=\"hint\">タップすると修正できます</p>";
+  h+='<div class="log">'+(list.length ? list.map(p=>{
+    const tag=p.open ? (onBreak(p)?'<span class="pill brk">休憩中</span>':'<span class="pill">勤務中</span>') : "";
+    return '<button class="row" data-edit="'+esc(p.id)+'"><div><div class="who">'+esc(staffName(p.staffId))+tag+'</div><div class="tm">'+hm(p.in)+" 〜 "+(p.out?hm(p.out):"")+'</div></div><div><div class="hrs">'+dur(workMs(p,now))+'</div><div class="sub">休憩 '+Math.round(breakMs(p,now)/60000)+'分</div></div></button>';
+  }).join("") : '<div class="empty">今日の打刻はまだありません</div>')+"</div>";
+  return h;
+}
+
+function monthRows(){
+  let rows=S.month.slice();
+  if (S.filter!=="all") rows=rows.filter(p=>p.staffId===S.filter);
+  return rows.sort((a,b)=>b.date.localeCompare(a.date) || b.in-a.in);
+}
+function monthBar(){
+  const [y,m]=S.monthKey.split("-").map(Number);
+  return '<div class="bar noprint" style="margin-top:8px"><div class="month"><button class="iconbtn" data-mon="-1" aria-label="前の月">‹</button><span>'+y+"年"+m+'月</span><button class="iconbtn" data-mon="1" aria-label="次の月">›</button></div><span class="spacer"></span>';
+}
+function viewRecords(){
+  const now=Date.now();
+  const rows=monthRows();
+  let h=monthBar();
+  h+='<select id="filter" aria-label="スタッフで絞り込み"><option value="all">全員</option>'+S.staff.map(s=>'<option value="'+esc(s.id)+'"'+(S.filter===s.id?" selected":"")+">"+esc(s.name)+"</option>").join("")+"</select></div>";
+
+  // 集計
+  const ids=[...new Set(rows.map(p=>p.staffId))];
+  let totW=0, totN=0, totPay=0;
+  const showPay=!payHidden();
+  h+='<div class="sumwrap"><table><thead><tr><th>スタッフ</th><th>出勤日数</th><th>実働</th><th>うち深夜</th>'+(showPay?'<th>給与目安</th>':'')+'</tr></thead><tbody>';
+  if (!ids.length) h+='<tr><td colspan="5" style="text-align:center;color:var(--muted)">この月の記録はありません</td></tr>';
+  ids.forEach(id=>{ const r=calcPay(id); const pay=r.base+r.night; totW+=r.workMin; totN+=r.nightMin; totPay+=pay;
+    h+="<tr><td>"+esc(r.name)+"</td><td>"+r.days+"日</td><td>"+dur(r.workMin*60000)+"</td><td>"+dur(r.nightMin*60000)+"</td>"+(showPay?"<td>"+(pay?yen(pay):"—")+"</td>":"")+"</tr>"; });
+  h+="</tbody>";
+  if (ids.length>1) h+="<tfoot><tr><td>合計</td><td></td><td>"+dur(totW*60000)+"</td><td>"+dur(totN*60000)+"</td>"+(showPay?"<td>"+(totPay?yen(totPay):"—")+"</td>":"")+"</tr></tfoot>";
+  h+="</table></div>";
+
+  h+='<div class="bar"><button class="btn primary" id="addRec">記録を追加</button>'+((downloads||STANDALONE)&&!payHidden()?'<button class="btn" id="csv">CSVを保存</button>':"")+"</div>";
+  if (!rows.length){ h+='<div class="log"><div class="empty">記録がありません</div></div>'; return h; }
+  h+='<p class="hint">修正したい記録をタップしてください</p><div class="log">';
+  let last="";
+  rows.forEach(p=>{
+    if (p.date!==last){ h+='<div class="daylab">'+dayLabel(p.date)+"</div>"; last=p.date; }
+    const tag=p.open?'<span class="pill">勤務中</span>':"";
+    h+='<button class="row" data-edit="'+esc(p.id)+'"><div><div class="who">'+esc(staffName(p.staffId))+tag+'</div><div class="tm">'+hm(p.in)+" 〜 "+(p.out?hm(p.out):"")+(p.memo?"　"+esc(p.memo):"")+'</div></div><div><div class="hrs">'+dur(workMs(p,now))+'</div><div class="sub">休憩 '+Math.round(breakMs(p,now)/60000)+"分</div></div></button>";
+  });
+  return h+"</div>";
+}
+
+function viewStaff(){
+  const list=S.staff.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+  let h="<h2>スタッフ</h2><p class=\"hint\">名前をタップすると、時給・深夜手当・交通費を変更できます。</p>";
+  h+='<div class="log stafflist">'+(list.length?list.map(s=>'<button class="row" data-staff="'+esc(s.id)+'"><div><div class="who">'+esc(s.name)+(s.active===false?'<span class="pill brk">非表示</span>':"")+'</div></div><div class="tm">'+(s.wage?"時給 "+yen(s.wage):"時給 未設定")+(s.nightYen?"・深夜 "+yen(s.nightYen):"")+(s.commute?"・交通費 "+yen(s.commute):"")+"</div></button>").join(""):'<div class="empty">まだ登録がありません</div>')+"</div>";
+  h+='<div class="addform"><input type="text" id="newName" placeholder="名前" maxlength="20" aria-label="名前"><input type="number" id="newWage" placeholder="時給（円）" min="0" step="10" inputmode="numeric" aria-label="時給"><input type="number" id="newNight" placeholder="深夜手当（円/時）" min="0" step="10" inputmode="numeric" aria-label="深夜手当（円/時間）"><button class="btn primary" id="addStaff">追加</button></div>';
+  h+='<h2>パスワード</h2><div class="cfg"><div>'+(lockSet()?'「給与」「スタッフ」は<b>パスワードで保護中</b>です。5分さわらないか「打刻」に戻ると、自動でロックされます。':'パスワードを設定すると、「給与」「スタッフ」を開くときに入力が必要になります。')+'</div>'+
+    (lockSet()?'<button class="btn" id="pwSet">変更</button><button class="btn danger" id="pwOff">解除</button>':'<button class="btn primary" id="pwSet">設定する</button>')+'</div>';
+  if (S.mode==="local"){
+    h+='<h2>バックアップ</h2><p class="hint">記録はこの端末のブラウザの中に保存されています。ブラウザのデータを消すと記録も消えるので、月に1回くらい保存しておくと安心です。</p>';
+    h+='<div class="bar"><button class="btn" id="backup">バックアップを保存</button><label class="btn" style="display:inline-flex;align-items:center;cursor:pointer">復元する<input type="file" id="restore" accept=".json,application/json" hidden></label></div>';
+  }
+  return h;
+}
+
+function viewPay(){
+  if (S.slip) return viewSlip(calcPay(S.slip));
+  const c=paySet();
+  const ids=[...new Set(S.staff.filter(s=>s.active!==false).map(s=>s.id).concat(S.month.map(p=>p.staffId)))]
+    .filter(id=>S.staff.some(s=>s.id===id));
+  let h=monthBar()+"</div>";
+  h+='<p class="hint">名前をタップすると給与明細が開きます（月末締め）</p>';
+  let tot=0;
+  h+='<div class="log">'+(ids.length ? ids.map(id=>{ const r=calcPay(id); tot+=r.net;
+    return '<button class="row" data-edit="" data-slip="'+esc(id)+'"><div><div class="who">'+esc(r.name)+(r.openCount?'<span class="pill">勤務中あり</span>':"")+'</div><div class="tm">'+r.days+"日・実働 "+dur(r.workMin*60000)+"・深夜 "+dur(r.nightMin*60000)+'</div></div><div><div class="hrs">'+yen(r.net)+'</div><div class="sub">差引支給額</div></div></button>';
+  }).join("") : '<div class="empty">スタッフが登録されていません</div>')+"</div>";
+  if (ids.length>1) h+='<p class="hint" style="text-align:right;margin-top:8px">支給額の合計 <b style="color:var(--ink);font-size:1.05rem">'+yen(tot)+"</b></p>";
+  h+='<h2>給与の設定</h2><div class="cfg"><div>深夜時間帯　<b>'+nightText(c)+'</b></div><button class="btn" id="paycfg">変更</button></div>';
+  h+='<p class="hint" style="margin-top:8px">基本時給・深夜手当・交通費は「スタッフ」タブで一人ずつ設定します。</p>';
+  return h;
+}
+function slipInner(r, forFile){
+  const [y,m]=S.monthKey.split("-").map(Number);
+  const li=(k,v,cls)=>'<div class="li'+(cls?" "+cls:"")+'"><span>'+k+"</span><span>"+v+"</span></div>";
+  const wageTxt=r.wages.length ? r.wages.map(w=>yen(w)).join(" / ") : "未設定";
+  const nightTxt=r.nights.length ? r.nights.map(w=>yen(w)).join(" / ") : "未設定";
+  let h='<h3>給与明細書</h3><p class="sm">'+y+"年"+m+'月分（'+m+'月1日〜月末）</p>';
+  h+='<div class="to"><div><b>'+esc(r.name)+'</b> 様</div><div style="text-align:right;font-size:.85rem">ラヴィング</div></div>';
+  h+='<div class="grp"><span class="gt">勤怠</span><div class="gl">'+li("出勤日数",r.days+"日")+li("総労働時間",minText(r.workMin))+li("うち深夜（"+nightText(r.cfg)+"）",minText(r.nightMin))+li("基本時給",wageTxt)+li("深夜手当（1時間あたり）",nightTxt)+"</div></div>";
+  h+='<div class="grp"><span class="gt">支給</span><div class="gl">'+li("基本給",yen(r.base))+li("深夜手当",yen(r.night))+(r.commute?li("交通費",yen(r.commute)):"")+(r.extra?li(esc(r.extraLabel),yen(r.extra)):"")+li("支給合計",yen(r.gross),"tot")+"</div></div>";
+  if (r.ded) h+='<div class="grp"><span class="gt">控除</span><div class="gl">'+(r.tax?li("源泉所得税",yen(r.tax)):"")+(r.deduct?li(esc(r.deductLabel),yen(r.deduct)):"")+li("控除合計",yen(r.ded),"tot")+"</div></div>";
+  h+='<div class="net"><span>差引支給額</span><span>'+yen(r.net)+"</span></div>";
+  h+='<div class="grp"><span class="gt">勤務の明細</span><div class="gl" style="overflow-x:auto"><table><thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>深夜</th></tr></thead><tbody>';
+  h+=r.detail.length ? r.detail.map(d=>{ const [,mm,dd]=d.p.date.split("-").map(Number);
+    return "<tr><td>"+mm+"/"+dd+"</td><td>"+hm(d.p.in)+"</td><td>"+hm(d.p.out)+"</td><td>"+Math.round(breakMs(d.p,0)/60000)+"分</td><td>"+dur(d.wm*60000)+"</td><td>"+dur(d.nm*60000)+"</td></tr>"; }).join("")
+    : '<tr><td colspan="6" style="text-align:center;color:#888">勤務なし</td></tr>';
+  h+="</tbody></table></div></div>";
+  h+='<p class="foot">深夜手当は '+nightText(r.cfg)+" の勤務時間に対して支給しています。</p>";
+  return h;
+}
+function viewSlip(r){
+  let h='<button class="backbtn noprint" data-slipback>‹ 給与の一覧へ</button>';
+  if (r.openCount) h+='<div class="warn noprint">勤務中の記録が '+r.openCount+' 件あります。退勤が入るまで、その日は明細に含まれません。</div>';
+  if (!r.wages.length || r.wages.every(w=>!w)) h+='<div class="warn noprint">基本時給が設定されていません。「スタッフ」タブで設定してください。</div>';
+  if (r.nightMin && r.nights.every(w=>!w)) h+='<div class="warn noprint">深夜の勤務がありますが、深夜手当が0円です。「スタッフ」タブで設定してください。</div>';
+  h+='<div class="bar noprint"><button class="btn" id="adjust">手当・控除を入力</button><span class="spacer"></span><button class="btn" id="slipSave">ファイルで保存</button><button class="btn primary" id="slipPrint">印刷</button></div>';
+  h+='<div class="slip">'+slipInner(r)+"</div>";
+  return h;
+}
+function saveSlipFile(){
+  const r=calcPay(S.slip);
+  const css=[...document.styleSheets].map(ss=>{ try{ return [...ss.cssRules].map(x=>x.cssText).join("\n"); }catch(e){ return ""; } }).join("\n");
+  const html='<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>給与明細 '+esc(r.name)+" "+S.monthKey+'</title><style>'+css+'body{background:#fff;padding:16px}.slip{max-width:560px;margin:0 auto;border:0}</style></head><body><div class="slip">'+slipInner(r)+"</div></body></html>";
+  saveFile("給与明細_"+r.name+"_"+S.monthKey+".html", html, "text/html");
+}
+
+function render(){
+  $("#view").innerHTML = S.tab==="punch" ? viewPunch() : S.tab==="records" ? viewRecords() : S.tab==="pay" ? viewPay() : viewStaff();
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===S.tab)));
+  $("#modeNote").textContent = S.mode==="db" ? "記録は共有データとして保存されます。" : "記録はこの端末のブラウザに保存されます。";
+}
+
+/* ---------- ダイアログ ---------- */
+const dlg=$("#dlg");
+function openDlg(html){ $("#dlgBody").innerHTML=html; if(dlg.open) return;
+  try{ dlg.showModal(); }catch(e){ dlg.classList.add("fb"); dlg.setAttribute("open",""); } }
+function closeDlg(){ if(!dlg.hasAttribute("open")) return; try{ dlg.close(); }catch(e){} dlg.removeAttribute("open"); dlg.classList.remove("fb"); }
+dlg.addEventListener("click",e=>{ if(e.target===dlg) closeDlg(); });
+
+function punchDialog(staffId){
+  const s=S.staff.find(x=>x.id===staffId); if(!s) return;
+  const p=openPunchOf(staffId);
+  let acts;
+  if (!p) acts='<button class="act in" data-do="in">出勤</button>';
+  else if (onBreak(p)) acts='<button class="act brk" data-do="bend">休憩終了</button><button class="act out" data-do="out">退勤</button>';
+  else acts='<button class="act brk" data-do="bstart">休憩開始</button><button class="act out" data-do="out">退勤</button>';
+  const status=p ? (onBreak(p)?"休憩中":"勤務中（"+hm(p.in)+"〜 実働 "+dur(workMs(p,Date.now()))+"）") : "未出勤";
+  openDlg('<h3>'+esc(s.name)+'</h3><p class="now">'+status+'</p><div class="acts">'+acts+'</div><div class="dlgfoot"><span class="spacer"></span><button class="btn" data-close>閉じる</button></div>');
+  $("#dlgBody").dataset.staff=staffId;
+}
+async function doPunch(kind, staffId){
+  const now=Date.now(); const name=staffName(staffId);
+  let p=openPunchOf(staffId);
+  try{
+    if (kind==="in"){
+      if (p){ toast("すでに出勤しています"); return; }
+      const id=uid();
+      await put("punches", id, {staffId, date:bizDate(now), in:now, out:null, open:true, breaks:[], breakMin:null, memo:"", createdAt:now});
+      toast(name+"さん 出勤 "+hm(now));
+    } else {
+      if (!p){ toast("出勤記録が見つかりません"); return; }
+      const d=strip(p); d.breaks=d.breaks||[];
+      if (kind==="bstart"){ d.breaks.push({s:now,e:null}); toast(name+"さん 休憩開始 "+hm(now)); }
+      if (kind==="bend"){ const b=d.breaks[d.breaks.length-1]; if(b&&b.e==null) b.e=now; toast(name+"さん 休憩終了 "+hm(now)); }
+      if (kind==="out"){ const b=d.breaks[d.breaks.length-1]; if(b&&b.e==null) b.e=now; d.out=now; d.open=false; toast(name+"さん お疲れさまでした "+hm(now)); }
+      await put("punches", p.id, d);
+    }
+    closeDlg();
+  }catch(e){}
+}
+
+function recordDialog(id){
+  const p=id ? findRec(id) : null;
+  const staffOpts=S.staff.map(s=>'<option value="'+esc(s.id)+'"'+(p&&p.staffId===s.id?" selected":"")+">"+esc(s.name)+"</option>").join("");
+  const bm=p ? Math.round(breakMs(p,Date.now())/60000) : 0;
+  openDlg('<h3>'+(p?esc(staffName(p.staffId)):"記録を追加")+'</h3><p class="now">'+(p?dayLabel(p.date)+" の記録を修正":"打刻し忘れた分を追加できます")+'</p>'+
+    (p?'':'<div class="field"><label for="fStaff">スタッフ</label><select id="fStaff">'+staffOpts+'</select></div>')+
+    '<div class="field"><label for="fIn">出勤</label><input type="datetime-local" id="fIn" value="'+toInput(p?p.in:null)+'"></div>'+
+    '<div class="field"><label for="fOut">退勤（勤務中なら空欄）</label><input type="datetime-local" id="fOut" value="'+toInput(p?p.out:null)+'"></div>'+
+    '<div class="field"><label for="fBrk">休憩（分）</label><input type="number" id="fBrk" min="0" step="5" inputmode="numeric" value="'+bm+'"></div>'+
+    '<div class="field"><label for="fMemo">メモ</label><input type="text" id="fMemo" maxlength="60" value="'+esc(p?p.memo:"")+'"></div>'+
+    '<p class="dlgmsg" id="dlgMsg" role="alert"></p><div class="dlgfoot">'+(p?'<button class="btn danger" data-delrec>削除</button>':"")+'<span class="spacer"></span><button class="btn" data-close>キャンセル</button><button class="btn primary" data-saverec>保存</button></div>');
+  $("#dlgBody").dataset.rec=id||"";
+}
+async function saveRecord(){
+  const msg=t=>{ const m=$("#dlgMsg"); if(m) m.textContent=t; else toast(t); };
+  const id=$("#dlgBody").dataset.rec;
+  const old=id ? findRec(id) : null;
+  if (id && !old){ msg("元の記録が見つかりません。開き直してください"); return; }
+  const vin=$("#fIn").value, vout=$("#fOut").value;
+  // 時刻を変えていなければ元の値（秒まで）をそのまま使う
+  const tin = old && vin===toInput(old.in) ? old.in : fromInput(vin);
+  const tout = old && old.out!=null && vout===toInput(old.out) ? old.out : fromInput(vout);
+  const staffId=old ? old.staffId : $("#fStaff").value;
+  const brk=Math.max(0,parseInt($("#fBrk").value||"0",10)||0);
+  if (!staffId){ msg("スタッフを選んでください"); return; }
+  if (!tin){ msg("出勤の日時を入れてください"); return; }
+  if (vout && !tout){ msg("退勤の日時が正しくありません"); return; }
+  if (tout!=null && tout<tin){ msg("退勤が出勤より前になっています（日付も確認してください）"); return; }
+  if (tout==null && S.recent.some(p=>p.open && p.staffId===staffId && p.id!==id)){ msg("この人は別の記録で勤務中です。退勤も入れてください"); return; }
+  if (tout!=null && brk*60000 > tout-tin){ msg("休憩が勤務時間より長くなっています"); return; }
+  const oldBrk=old ? Math.round(breakMs(old,Date.now())/60000) : null;
+  const d=old ? strip(old) : {breaks:[], createdAt:Date.now()};
+  Object.assign(d,{staffId, in:tin, out:tout, open:tout==null, date:bizDate(tin), memo:$("#fMemo").value.trim(), editedAt:Date.now()});
+  if (!old || brk!==oldBrk) d.breakMin=brk;
+  if (tout!=null && d.breaks) d.breaks.forEach(b=>{ if(b.e==null) b.e=tout; });
+  const btn=document.querySelector("[data-saverec]"); if(btn) btn.disabled=true;
+  msg("");
+  try{ await put("punches", id||uid(), d); closeDlg(); toast("保存しました"); }
+  catch(e){ msg("保存できませんでした（"+((e&&e.code)||"エラー")+"）"); }
+  finally{ if(btn) btn.disabled=false; }
+}
+
+function unlockDialog(tab){
+  openDlg('<h3>パスワード</h3><p class="now">「'+(tab==="pay"?"給与":"スタッフ")+'」を開くにはパスワードが必要です</p>'+
+    '<div class="field"><label for="pwIn">パスワード</label><input type="password" id="pwIn" autocomplete="current-password" style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;min-height:42px"></div>'+
+    '<p class="dlgmsg" id="dlgMsg" role="alert"></p><div class="dlgfoot"><span class="spacer"></span><button class="btn" data-close>キャンセル</button><button class="btn primary" data-unlock>開く</button></div>');
+  $("#dlgBody").dataset.tab=tab; setTimeout(()=>{ const i=$("#pwIn"); if(i) i.focus(); },50);
+}
+async function tryUnlock(){
+  const l=S.settings.lock||{}; const v=$("#pwIn").value;
+  if (v && await hashPw(v,l.salt)===l.hash){ S.unlocked=true; S.lastAct=Date.now(); S.tab=$("#dlgBody").dataset.tab; S.slip=null; closeDlg(); render(); window.scrollTo(0,0); }
+  else { $("#dlgMsg").textContent="パスワードが違います"; $("#pwIn").select(); }
+}
+function pwSetDialog(){
+  const pf='style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;min-height:42px"';
+  openDlg('<h3>'+(lockSet()?"パスワードを変更":"パスワードを設定")+'</h3><p class="now">4文字以上。忘れないものにしてください</p>'+
+    '<div class="field"><label for="pw1">新しいパスワード</label><input type="password" id="pw1" autocomplete="new-password" '+pf+'></div>'+
+    '<div class="field"><label for="pw2">もう一度</label><input type="password" id="pw2" autocomplete="new-password" '+pf+'></div>'+
+    '<p class="dlgmsg" id="dlgMsg" role="alert"></p><div class="dlgfoot"><span class="spacer"></span><button class="btn" data-close>キャンセル</button><button class="btn primary" data-savepw>保存</button></div>');
+}
+async function savePw(){
+  const a=$("#pw1").value, b=$("#pw2").value;
+  if (a.length<4){ $("#dlgMsg").textContent="4文字以上にしてください"; return; }
+  if (a!==b){ $("#dlgMsg").textContent="2回の入力が一致しません"; return; }
+  const salt=uid(); const hash=await hashPw(a,salt);
+  try{ await put("settings","lock",{hash,salt,setAt:Date.now()}); S.unlocked=true; closeDlg(); toast("パスワードを設定しました"); }catch(_){}
+}
+function resetDialog(id){
+  const s=S.staff.find(x=>x.id===id); if(!s) return;
+  const [y,m]=S.monthKey.split("-").map(Number);
+  openDlg('<h3>記録をリセット</h3><p class="now">'+esc(s.name)+'さんの勤務記録を削除します</p>'+
+    '<div class="field"><label for="rRange">消す範囲</label><select id="rRange"><option value="month">'+y+"年"+m+'月の記録だけ</option><option value="all">すべての記録</option></select></div>'+
+    '<p class="hint">手当・控除の入力も一緒に消えます。スタッフ本人の登録（名前・時給など）は残ります。<br>消した記録は元に戻せません。給与の記録は保存が必要な場合があるので、先に「記録」タブの「CSVを保存」をしておくと安心です。</p>'+
+    '<p class="dlgmsg" id="dlgMsg" role="alert"></p><div class="dlgfoot"><span class="spacer"></span><button class="btn" data-close>キャンセル</button><button class="btn danger" data-doreset>リセットする</button></div>');
+  $("#dlgBody").dataset.sid=id;
+}
+async function doReset(){
+  const id=$("#dlgBody").dataset.sid, all=$("#rRange").value==="all", mk=S.monthKey;
+  const inRange=p=>p.staffId===id && (all || (p.date||"").startsWith(mk));
+  const adjOk=k=>k.startsWith(id+"_") && (all || k===id+"_"+mk);
+  const label=all?"すべての記録":Number(mk.split("-")[1])+"月の記録";
+  if (!confirm(staffName(id)+"さんの"+label+"を削除します。よろしいですか？")) return;
+  const btn=document.querySelector("[data-doreset]"); if(btn) btn.disabled=true;
+  let n=0;
+  try{
+    if (db){
+      const snap=await db.collection("punches").where("staffId","==",id).get();
+      for (const d of snap.docs){ if(inRange({staffId:id,...d.data()})){ await db.collection("punches").doc(d.id).delete(); n++; } }
+      for (const k of Object.keys(S.adjust).filter(adjOk)) await db.collection("adjust").doc(k).delete();
+    } else {
+      const o=lsLoad();
+      Object.keys(o.punches||{}).forEach(k=>{ if(inRange(o.punches[k])){ delete o.punches[k]; n++; } });
+      Object.keys(o.adjust||{}).forEach(k=>{ if(adjOk(k)) delete o.adjust[k]; });
+      lsSave(o); lsRefresh();
+    }
+    closeDlg(); toast(n+"件の記録を削除しました");
+  }catch(e){ $("#dlgMsg").textContent="削除できませんでした（"+((e&&e.code)||"エラー")+"）"; }
+  finally{ if(btn) btn.disabled=false; }
+}
+function hourOpts(sel){ let o=""; for(let i=0;i<24;i++) o+='<option value="'+i+'"'+(i===sel?" selected":"")+">"+i+":00</option>"; return o; }
+function payCfgDialog(){
+  const c=paySet();
+  openDlg('<h3>深夜時間帯</h3><p class="now">全員に共通です。この時間の勤務に深夜手当が付きます</p>'+
+    '<div class="row2"><div class="field"><label for="cNs">深夜の開始</label><select id="cNs">'+hourOpts(c.nightStart)+'</select></div>'+
+    '<div class="field"><label for="cNe">深夜の終了</label><select id="cNe">'+hourOpts(c.nightEnd)+'</select></div></div>'+
+    '<p class="hint">法律上の深夜は22時〜翌5時です。深夜手当は、その人の時給の25%以上になるよう設定してください。</p>'+
+    '<p class="dlgmsg" id="dlgMsg" role="alert"></p><div class="dlgfoot"><span class="spacer"></span><button class="btn" data-close>キャンセル</button><button class="btn primary" data-savecfg>保存</button></div>');
+}
+async function savePayCfg(){
+  const ns=Number($("#cNs").value), ne=Number($("#cNe").value);
+  if (ns===ne){ $("#dlgMsg").textContent="開始と終了を別の時刻にしてください"; return; }
+  try{ await put("settings","pay",{nightStart:ns,nightEnd:ne}); closeDlg(); toast("保存しました"); }catch(_){}
+}
+function adjustDialog(){
+  const r=calcPay(S.slip), a=S.adjust[S.slip+"_"+S.monthKey]||{};
+  const [,m]=S.monthKey.split("-").map(Number);
+  openDlg('<h3>手当・控除</h3><p class="now">'+esc(r.name)+'さん　'+m+'月分</p>'+
+    '<div class="row2"><div class="field"><label for="aXl">支給の名前</label><input type="text" id="aXl" maxlength="16" placeholder="その他手当" value="'+esc(a.extraLabel||"")+'"></div>'+
+    '<div class="field"><label for="aX">金額（円）</label><input type="number" id="aX" min="0" inputmode="numeric" value="'+esc(a.extra||"")+'"></div></div>'+
+    '<div class="field"><label for="aT">源泉所得税（円）</label><input type="number" id="aT" min="0" inputmode="numeric" value="'+esc(a.tax||"")+'"></div>'+
+    '<div class="row2"><div class="field"><label for="aDl">控除の名前</label><input type="text" id="aDl" maxlength="16" placeholder="その他控除" value="'+esc(a.deductLabel||"")+'"></div>'+
+    '<div class="field"><label for="aD">金額（円）</label><input type="number" id="aD" min="0" inputmode="numeric" value="'+esc(a.deduct||"")+'"></div></div>'+
+    '<p class="hint">使わない欄は空欄のままで大丈夫です。</p>'+
+    '<div class="dlgfoot"><span class="spacer"></span><button class="btn" data-close>キャンセル</button><button class="btn primary" data-saveadj>保存</button></div>');
+}
+async function saveAdjust(){
+  const n=v=>Math.max(0,parseInt(v||"0",10)||0);
+  const d={staffId:S.slip, month:S.monthKey, extraLabel:$("#aXl").value.trim(), extra:n($("#aX").value), tax:n($("#aT").value), deductLabel:$("#aDl").value.trim(), deduct:n($("#aD").value)};
+  try{ await put("adjust", S.slip+"_"+S.monthKey, d); closeDlg(); toast("保存しました"); }catch(_){}
+}
+
+function staffDialog(id){
+  const s=S.staff.find(x=>x.id===id); if(!s) return;
+  const hist=(s.wageHist||[]).filter(x=>x.from>"0000").sort((a,b)=>b.from.localeCompare(a.from));
+  openDlg('<h3>スタッフを編集</h3><p class="now">&nbsp;</p>'+
+    '<div class="field"><label for="sName">名前</label><input type="text" id="sName" maxlength="20" value="'+esc(s.name)+'"></div>'+
+    '<div class="row2"><div class="field"><label for="sWage">基本時給（円）</label><input type="number" id="sWage" min="0" step="10" inputmode="numeric" value="'+esc(s.wage||"")+'"></div>'+
+    '<div class="field"><label for="sNight">深夜手当（円/時間）</label><input type="number" id="sNight" min="0" step="10" inputmode="numeric" value="'+esc(s.nightYen||"")+'"></div></div>'+
+    '<div class="field"><label for="sFrom">金額を変えたら、いつから適用</label><input type="date" id="sFrom" value="'+bizDate(Date.now())+'"></div>'+
+    (hist.length?'<p class="hint">変更の履歴：'+hist.map(x=>{ const [,mm,dd]=x.from.split("-").map(Number); return mm+"/"+dd+"〜 時給"+yen(x.wage)+(x.night!=null?"・深夜"+yen(x.night):""); }).join("、")+"</p>":"")+
+    '<div class="field"><label for="sCommute">交通費（1日あたり・円）</label><input type="number" id="sCommute" min="0" step="10" inputmode="numeric" value="'+esc(s.commute||"")+'"></div>'+
+    '<label class="check"><input type="checkbox" id="sActive"'+(s.active!==false?" checked":"")+'> 打刻画面に表示する</label>'+
+    '<div style="margin-top:14px"><button class="btn danger" data-resetrec style="width:100%">この人の勤務記録をリセット</button></div>'+
+    '<div class="dlgfoot"><button class="btn danger" data-delstaff>削除</button><span class="spacer"></span><button class="btn" data-close>キャンセル</button><button class="btn primary" data-savestaff>保存</button></div>');
+  $("#dlgBody").dataset.sid=id;
+}
+
+/* ---------- CSV ---------- */
+async function saveCsv(){
+  const now=Date.now();
+  const rows=monthRows().slice().reverse();
+  const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  const c=paySet();
+  const lines=[["日付","スタッフ","出勤","退勤","休憩(分)","実働(時間)","うち深夜(時間)","時給","基本給","深夜手当","メモ"].map(q).join(",")];
+  rows.forEach(p=>{ const rt=rateAt(p.staffId,p.date), w=rt.wage; const sp=splitWork(p,now,c); const wm=Math.floor(sp.work/60000), nm=Math.floor(sp.night/60000);
+    lines.push([p.date,staffName(p.staffId),hm(p.in),p.out?hm(p.out):"勤務中",Math.round(breakMs(p,now)/60000),(wm/60).toFixed(2),(nm/60).toFixed(2),w||"",w?Math.round(w*wm/60):"",Math.round(nightPayFor(rt.night,nm))||"",p.memo||""].map(q).join(",")); });
+  saveFile("timecard-"+S.monthKey+".csv", "\uFEFF"+lines.join("\r\n"), "text/csv");
+}
+async function saveFile(filename, text, type){
+  if (downloads){
+    try{ await downloads.save({filename, data:text}); }
+    catch(e){ if(e && e.code!=="declined") toast("保存できませんでした"); }
+    return;
+  }
+  const url=URL.createObjectURL(new Blob([text],{type:type+";charset=utf-8"}));
+  const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+function backup(){ saveFile("timecard-backup-"+ymd(new Date())+".json", JSON.stringify(lsLoad()), "application/json"); }
+function restore(file){
+  const r=new FileReader();
+  r.onload=()=>{ try{ const o=JSON.parse(r.result); if(!o||typeof o.staff!=="object"||typeof o.punches!=="object") throw 0;
+      if(!confirm("バックアップから復元しますか？\n今この端末にある記録は置き換わります。")) return;
+      lsSave(o); lsRefresh(); toast("復元しました"); }
+    catch(e){ toast("このファイルは読み込めません"); } };
+  r.readAsText(file);
+}
+
+/* ---------- イベント ---------- */
+document.addEventListener("click", async e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  if (t.dataset.tab){
+    const tab=t.dataset.tab;
+    if (!PROTECTED.includes(tab)) S.unlocked=false;           // 打刻・記録に戻ったらロック
+    if (PROTECTED.includes(tab) && lockSet() && !S.unlocked){ unlockDialog(tab); return; }
+    S.tab=tab; S.slip=null; render(); window.scrollTo(0,0); return;
+  }
+  if (t.hasAttribute("data-unlock")){ tryUnlock(); return; }
+  if (t.id==="pwSet"){ pwSetDialog(); return; }
+  if (t.hasAttribute("data-savepw")){ savePw(); return; }
+  if (t.id==="pwOff"){ if(confirm("パスワードを解除しますか？\n誰でも「給与」「スタッフ」を開けるようになります。")){ try{ await put("settings","lock",{hash:"",salt:""}); toast("パスワードを解除しました"); }catch(_){} } return; }
+  if (t.hasAttribute("data-resetrec")){ resetDialog($("#dlgBody").dataset.sid); return; }
+  if (t.hasAttribute("data-doreset")){ doReset(); return; }
+  if (t.dataset.slip){ S.slip=t.dataset.slip; render(); window.scrollTo(0,0); return; }
+  if (t.hasAttribute("data-slipback")){ S.slip=null; render(); return; }
+  if (t.id==="paycfg"){ payCfgDialog(); return; }
+  if (t.hasAttribute("data-savecfg")){ savePayCfg(); return; }
+  if (t.id==="adjust"){ adjustDialog(); return; }
+  if (t.hasAttribute("data-saveadj")){ saveAdjust(); return; }
+  if (t.id==="slipPrint"){ try{ window.print(); }catch(_){ toast("印刷できない環境です。「ファイルで保存」を使ってください"); } return; }
+  if (t.id==="slipSave"){ saveSlipFile(); return; }
+  if (t.dataset.punch){ punchDialog(t.dataset.punch); return; }
+  if (t.dataset.do){ doPunch(t.dataset.do, $("#dlgBody").dataset.staff); return; }
+  if (t.hasAttribute("data-close")){ closeDlg(); return; }
+  if (t.dataset.mon){ const [y,m]=S.monthKey.split("-").map(Number); S.monthKey=ymKey(new Date(y,m-1+Number(t.dataset.mon),1)); S.month=[]; subscribeMonth(); render(); return; }
+  if (t.id==="addRec"){ if(!S.staff.length){ toast("先にスタッフを登録してください"); return; } recordDialog(null); return; }
+  if (t.dataset.edit){ recordDialog(t.dataset.edit); return; }
+  if (t.hasAttribute("data-saverec")){ saveRecord(); return; }
+  if (t.hasAttribute("data-delrec")){ if(confirm("この記録を削除しますか？")){ try{ await del("punches",$("#dlgBody").dataset.rec); closeDlg(); toast("削除しました"); }catch(_){} } return; }
+  if (t.id==="csv"){ saveCsv(); return; }
+  if (t.id==="backup"){ backup(); return; }
+  if (t.id==="addStaff"){
+    const name=$("#newName").value.trim(); const wage=parseInt($("#newWage").value||"0",10)||0; const nightYen=parseInt($("#newNight").value||"0",10)||0;
+    if(!name){ toast("名前を入れてください"); return; }
+    const order=S.staff.reduce((a,s)=>Math.max(a,s.order||0),0)+1;
+    try{ await put("staff", uid(), {name, wage, nightYen, active:true, order}); toast(name+"さんを追加しました"); if(S.mode==="local") render(); }catch(_){}
+    return;
+  }
+  if (t.dataset.staff){ staffDialog(t.dataset.staff); return; }
+  if (t.hasAttribute("data-savestaff")){
+    const id=$("#dlgBody").dataset.sid; const s=S.staff.find(x=>x.id===id); if(!s) return;
+    const name=$("#sName").value.trim(); if(!name){ toast("名前を入れてください"); return; }
+    const d=strip(s); const nw=parseInt($("#sWage").value||"0",10)||0, ow=Number(s.wage)||0;
+    const nn=parseInt($("#sNight").value||"0",10)||0, on=Number(s.nightYen)||0;
+    if (nw!==ow || nn!==on){
+      const from=$("#sFrom").value || bizDate(Date.now());
+      let h=(d.wageHist||[]).slice(); if(!h.length) h=[{from:"0000-01-01", wage:ow, night:on}];
+      h=h.map(x=>x.night!=null?x:Object.assign({},x,{night:on}));
+      h=h.filter(x=>x.from!==from); h.push({from, wage:nw, night:nn}); h.sort((a,b)=>a.from.localeCompare(b.from));
+      d.wageHist=h;
+    }
+    Object.assign(d,{name, wage:nw, nightYen:nn, commute:parseInt($("#sCommute").value||"0",10)||0, active:$("#sActive").checked});
+    try{ await put("staff", id, d); closeDlg(); toast("保存しました"); }catch(_){}
+    return;
+  }
+  if (t.hasAttribute("data-delstaff")){
+    const id=$("#dlgBody").dataset.sid;
+    if(confirm("このスタッフを削除しますか？\n（過去の勤務記録は残ります。見えなくするだけなら「打刻画面に表示する」を外してください）")){ try{ await del("staff",id); closeDlg(); toast("削除しました"); }catch(_){} }
+  }
+});
+document.addEventListener("change", e=>{ if(e.target.id==="filter"){ S.filter=e.target.value; render(); } if(e.target.id==="restore" && e.target.files[0]){ restore(e.target.files[0]); e.target.value=""; } });
+document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target.id==="pwIn"){ tryUnlock(); return; } if(e.key==="Enter" && (e.target.id==="newName"||e.target.id==="newWage"||e.target.id==="newNight")) $("#addStaff").click(); });
+
+tick(); render(); initStore();
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+})();
+</script>
+</body>
+</html>
